@@ -13,17 +13,17 @@ provider "aws" {
 
 data "archive_file" "lambda_zip" {
     type          = "zip"
-    source_file   = "index.js"
-    output_path   = "lambda_function.zip"
+    source_file   = "bin/aws-lambda-go"
+    output_path   = "lambda_function_go.zip"
 }
 
 resource "aws_lambda_function" "test_lambda" {
-  filename         = "lambda_function.zip"
-  function_name    = "test_lambda"
+  filename         = "lambda_function_go.zip"
+  function_name    = "test_lambda_go"
   role             = "${aws_iam_role.iam_for_lambda_tf.arn}"
-  handler          = "index.handler"
+  handler          = "aws-lambda-go"
   source_code_hash = "${data.archive_file.lambda_zip.output_base64sha256}"
-  runtime          = "nodejs12.x"
+  runtime          = "go1.x"
 }
 
 resource "aws_iam_role" "iam_for_lambda_tf" {
@@ -44,4 +44,29 @@ resource "aws_iam_role" "iam_for_lambda_tf" {
   ]
 }
 EOF
+}
+
+resource "aws_lambda_permission" "allow_bucket" {
+  statement_id   = "AllowExecutionFromS3Bucket"
+  action         = "lambda:InvokeFunction"
+  function_name  = "${aws_lambda_function.test_lambda.arn}"
+  principal      = "s3.amazonaws.com"
+  source_arn     = "${aws_s3_bucket.foo.arn}"
+}
+
+resource "aws_s3_bucket_notification" "bucket_notification" {
+  bucket = "${aws_s3_bucket.foo.id}"
+
+  lambda_function {
+    lambda_function_arn = "${aws_lambda_function.test_lambda.arn}"
+    events              = ["s3:ObjectCreated:*"]
+  }
+
+  depends_on = ["aws_lambda_permission.allow_bucket"]
+}
+
+resource "aws_iam_role_policy_attachment" "aws_managed_policy" {
+  role       = "${aws_iam_role.iam_for_lambda_tf.name}"
+#  policy_arn = "arn:aws:iam::aws:policy/AWSLambdaBasicExecutionRole"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
