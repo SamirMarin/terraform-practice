@@ -70,3 +70,7 @@ resource "aws_iam_role_policy_attachment" "aws_managed_policy" {
 #  policy_arn = "arn:aws:iam::aws:policy/AWSLambdaBasicExecutionRole"
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
+resource "aws_iam_role_policy_attachment" "aws_managed_policy_s3" {
+  role       = "${aws_iam_role.iam_for_lambda_tf.name}"
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
